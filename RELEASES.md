@@ -95,6 +95,35 @@ zarf package verify <package.tar.zst> --trusted-root src/pkg/signing/embedded_tr
 
 If the refresh fails (network unavailable, TUF root mismatch), do not commit the file. The previous committed version remains valid until the next successful refresh.
 
+### Verifying Release Binaries and Checksums
+
+Release checksums (`checksums.txt`) are signed with keyless Sigstore signing during the release workflow via GoReleaser and Cosign. Consumers can verify the checksums file and use it to verify any downloaded binary:
+
+**Tagged release:**
+```bash
+cosign verify-blob \
+  --certificate-identity "https://github.com/zarf-dev/zarf/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate checksums.txt.pem \
+  --signature checksums.txt.sig \
+  checksums.txt
+```
+
+**Nightly build:**
+```bash
+cosign verify-blob \
+  --certificate-identity "https://github.com/zarf-dev/zarf/.github/workflows/nightly-release.yaml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate checksums.txt.pem \
+  --signature checksums.txt.sig \
+  checksums.txt
+```
+
+Once the checksums file is verified, check the integrity of downloaded binaries:
+```bash
+sha256sum --check --ignore-missing checksums.txt
+```
+
 ### Verifying the Init Package
 
 The init package is signed with keyless Sigstore signing during the release workflow. Consumers can verify offline using the embedded TrustedRoot:

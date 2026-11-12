@@ -44,6 +44,20 @@ checksum:
     - glob: ./.vex/zarf.cli.openvex.json
   algorithm: sha256
 
+# sign the checksums file with cosign keyless signing
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    certificate: "${artifact}.pem"
+    signature: "${artifact}.sig"
+    args:
+      - "sign-blob"
+      - "--yes"
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+    output: true
+
 # generate sboms for each binary artifact
 sboms:
   - artifacts: binary
@@ -70,6 +84,25 @@ release:
     - glob: ./build/zarf-init-*
     - glob: ./.vex/zarf.cli.openvex.json
   footer: |
+    ## Verifying Checksums and Binaries
+
+    Release checksums are signed with keyless Sigstore signing. Verify with:
+
+    ```bash
+    cosign verify-blob \
+      --certificate-identity "https://github.com/zarf-dev/zarf/.github/workflows/release.yml@refs/tags/{{ .Tag }}" \
+      --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+      --certificate checksums.txt.pem \
+      --signature checksums.txt.sig \
+      checksums.txt
+    ```
+
+    Once verified, use `checksums.txt` to verify any downloaded binary:
+
+    ```bash
+    sha256sum --check --ignore-missing checksums.txt
+    ```
+
     ## Verifying Init Packages
 
     The init packages in this release are signed with keyless Sigstore signing. Verify with:
